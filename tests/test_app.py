@@ -44,6 +44,18 @@ def test_signup_adds_participant(client):
     assert activities[TEST_ACTIVITY]["participants"] == [TEST_EMAIL]
 
 
+def test_get_activities_reflects_signup_and_unregister(client):
+    signup_url = f"/activities/{TEST_ACTIVITY}/signup"
+
+    client.post(signup_url, params={"email": TEST_EMAIL})
+    signed_up_activities = client.get("/activities").json()
+    assert signed_up_activities[TEST_ACTIVITY]["participants"] == [TEST_EMAIL]
+
+    client.delete(signup_url, params={"email": TEST_EMAIL})
+    unregistered_activities = client.get("/activities").json()
+    assert unregistered_activities[TEST_ACTIVITY]["participants"] == []
+
+
 def test_signup_rejects_duplicate_participant(client):
     signup_url = f"/activities/{TEST_ACTIVITY}/signup"
     client.post(signup_url, params={"email": TEST_EMAIL})
@@ -76,6 +88,18 @@ def test_unregister_removes_participant(client):
         "message": f"Unregistered {TEST_EMAIL} from {TEST_ACTIVITY}"
     }
     assert activities[TEST_ACTIVITY]["participants"] == []
+
+
+def test_unregister_preserves_other_participants(client):
+    signup_url = f"/activities/{TEST_ACTIVITY}/signup"
+    other_email = "another-student@mergington.edu"
+    client.post(signup_url, params={"email": TEST_EMAIL})
+    client.post(signup_url, params={"email": other_email})
+
+    response = client.delete(signup_url, params={"email": TEST_EMAIL})
+
+    assert response.status_code == 200
+    assert activities[TEST_ACTIVITY]["participants"] == [other_email]
 
 
 def test_unregister_rejects_nonparticipant(client):
